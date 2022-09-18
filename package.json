@@ -1,0 +1,31 @@
+{
+  "name": "cinonim-wat",
+  "version": "0.1.0",
+  "description": "Cinonim compiler to WAT",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha-tiny"
+  },
+  "dependencies": {
+    "@popovmp/tokenizer": "^2.1.0",
+    "@popovmp/cinonim-parser": "^0.1.0"
+  },
+  "devDependencies": {
+    "@popovmp/mocha-tiny": "^2.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/PopovMP/cinonim-wat.git"
+  },
+  "keywords": [
+    "C-language",
+    "wat",
+    "webassembly"
+  ],
+  "author": "PopovMP",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PopovMP/cinonim-wat/issues"
+  },
+  "homepage": "https://github.com/PopovMP/cinonim-wat#readme"
+}
