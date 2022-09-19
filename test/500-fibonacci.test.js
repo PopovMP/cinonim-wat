@@ -15,8 +15,8 @@ long fibonacci(int n)
 {
 	long curr, prev, temp;
 
-	curr = 1L;
-	prev = 1L;
+	curr = 1;
+	prev = 1;
 
 	while(n > 2) {
 		temp = curr;
