@@ -8,14 +8,13 @@ const operatorMap = {
 	'*' : 'mul',
 	'/' : 'div',
 	'%' : 'rem',
-	'<' : 'lt',
-	'<=': 'le',
-	'>' : 'gt',
-	'>=': 'ge',
+	'<' : 'lt_S',
+	'<=': 'le_s',
+	'>' : 'gt_s',
+	'>=': 'ge_s',
 	'==': 'eq',
 	'!=': 'ne',
 }
-
 
 /**
  * Compile Cinonim AST to WAT
@@ -98,14 +97,20 @@ function walkAst(node, output, depth)
 		const params = funcParams.nodes.map( param => `(param $${param.value} ${getDataType(param)})`).join(' ')
 		const result = dataType === DataType.void ? '' : ` (result ${dataType})`
 
-		const func     = `(func $${name} ${params}${result}`
-		const retBlock =     `(block $_return${result}`
+		output.push('\n')
+		output.push(lpad(`(func $${name} ${params}${result}`, depth))
 
-		output.push( lpad(func, depth  ) )
-		output.push( lpad(retBlock,     depth+1) )
+		// Local vars
+		for (const child of funcBody.nodes) {
+			if (child.type !== NodeType.localVar) break
+			output.push( lpad(`(local $${child.value} ${getDataType(child)})`, depth+1) )
+		}
+
+		output.push('\n')
+		output.push(lpad(`(block $return_${name}${result}`, depth+1))
 
 		for (const child of funcBody.nodes)
-			walkFunctionBody(child, output, depth+2)
+			compileForm(child, output, depth+2)
 
 		output.push( lpad(')', depth+1) )
 		output.push( lpad(')', depth) )
@@ -120,26 +125,59 @@ function walkAst(node, output, depth)
  * @param {string[]} output
  * @param {number} depth
  */
-function walkFunctionBody(node, output, depth)
+function compileForm(node, output, depth)
 {
-	// Local var
-	if (node.type === NodeType.localVar) {
-		const name     = node.value
-		const dataType = getDataType(node)
+	// Local are compiled before the function's return block
+	if (node.type === NodeType.localVar) return
 
-		const wat = `(local $${name} ${dataType})`
+	// Local set
+	if (node.type === NodeType.localSet) {
+		const name = node.value
+		const expr = compileExpression(node.nodes[0])
+
+		const wat = `(local.set $${name} ${expr})`
 
 		output.push( lpad(wat, depth) )
 		return
 	}
 
-	// return
-	if (node.type === NodeType.return) {
-		const value = node.nodes.length === 0 ? '' : compileExpression(node.nodes[0])
+	// Global set
+	if (node.type === NodeType.localSet) {
+		const name = node.value
+		const expr = compileExpression(node.nodes[0])
 
-		const wat = `(br $_return ${value})`
+		const wat = `(global.set $${name} ${expr})`
 
 		output.push( lpad(wat, depth) )
+		return
+	}
+
+	// While
+	if (node.type === NodeType.while) {
+		output.push('\n')
+		output.push( lpad(`(block $break_${depth}`,    depth) )
+		output.push( lpad(`(loop  $continue_${depth}`, depth) )
+
+		const predicate = compileExpression(node.nodes[0].nodes[0])
+		const condition = `(br_if $break_${depth} (i32.eqz ${predicate}))`
+		output.push( lpad(condition, depth+1) )
+
+		for (const child of node.nodes[1].nodes)
+			compileForm(child, output, depth+1)
+
+		output.push( lpad(`(br $continue_${depth})`, depth+1) )
+		output.push( lpad('))', depth) )
+
+		return
+	}
+
+	// return
+	if (node.type === NodeType.return) {
+		const name  = node.value
+		const value = node.nodes.length === 0 ? '' : compileExpression(node.nodes[0])
+
+		output.push('\n')
+		output.push( lpad(`(br $return_${name} ${value})`, depth) )
 		return
 	}
 

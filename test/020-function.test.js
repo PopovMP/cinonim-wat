@@ -19,9 +19,12 @@ int add(int a, int b) {
 const expected = '' +
 `(module
     (export "addTwo" (func $add))
+
     (func $add (param $a i32) (param $b i32) (result i32)
-        (block $_return (result i32)
-            (br $_return (local.get $a) (local.get $b) (i32.add))
+
+        (block $return_add (result i32)
+
+            (br $return_add (local.get $a) (local.get $b) (i32.add))
         )
     )
 )`
