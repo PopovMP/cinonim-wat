@@ -2,6 +2,21 @@
 
 const {NodeType, DataType} = require("@popovmp/cinonim-parser")
 
+const operatorMap = {
+	'+' : 'add',
+	'-' : 'sub',
+	'*' : 'mul',
+	'/' : 'div',
+	'%' : 'rem',
+	'<' : 'lt',
+	'<=': 'le',
+	'>' : 'gt',
+	'>=': 'ge',
+	'==': 'eq',
+	'!=': 'ne',
+}
+
+
 /**
  * Compile Cinonim AST to WAT
  *
@@ -40,6 +55,16 @@ function walkAst(node, output, depth)
 		return
 	}
 
+	// Export function
+	if (node.type === NodeType.exportFunc) {
+		const name  = node.value
+		const value = node.data[0]
+
+		const wat = `(export "${value}" (func $${name}))`
+		output.push( lpad(wat, depth) )
+		return
+	}
+
 	// Global var
 	if (node.type === NodeType.globalVar) {
 		const name     = node.value
@@ -74,7 +99,7 @@ function walkAst(node, output, depth)
 		const result = dataType === DataType.void ? '' : ` (result ${dataType})`
 
 		const func     = `(func $${name} ${params}${result}`
-		const retBlock =     `(block $_return ${result}`
+		const retBlock =     `(block $_return${result}`
 
 		output.push( lpad(func, depth  ) )
 		output.push( lpad(retBlock,     depth+1) )
@@ -128,28 +153,8 @@ function walkFunctionBody(node, output, depth)
  */
 function compileExpression(node)
 {
-	if (node.type === NodeType.binaryOperator && node.value === '+') {
-		const dataType   = getDataType(node)
-		const [ch0, ch1] = node.nodes
-		return `(${dataType}.add ${compileExpression(ch0)} ${compileExpression(ch1)})`
-	}
-
-	if (node.type === NodeType.binaryOperator && node.value === '*') {
-		const dataType   = getDataType(node)
-		const [ch0, ch1] = node.nodes
-		return `(${dataType}.mul ${compileExpression(ch0)} ${compileExpression(ch1)})`
-	}
-
-	if (node.type === NodeType.binaryOperator && node.value === '-') {
-		const dataType   = getDataType(node)
-		const [ch0, ch1] = node.nodes
-		return `(${dataType}.sub ${compileExpression(ch0)} ${compileExpression(ch1)})`
-	}
-
-	if (node.type === NodeType.binaryOperator && node.value === '/') {
-		const dataType   = getDataType(node)
-		const [ch0, ch1] = node.nodes
-		return `(${dataType}.div ${compileExpression(ch0)} ${compileExpression(ch1)})`
+	if (node.type === NodeType.expression) {
+		return node.nodes.map(n => compileExpression(n)).join(' ')
 	}
 
 	if (node.type === NodeType.number) {
@@ -167,6 +172,13 @@ function compileExpression(node)
 	if (node.type === NodeType.globalGet) {
 		const name = node.value
 		return `(global.get $${name})`
+	}
+
+	if (node.type === NodeType.operator) {
+		const dataType    = getDataType(node)
+		const instruction = operatorMap[node.value]
+
+		return `(${dataType}.${instruction})`
 	}
 
 	throw new Error('Unknown code in expression: ' + node.value)

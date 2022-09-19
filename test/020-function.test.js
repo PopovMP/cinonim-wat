@@ -9,16 +9,19 @@ const {describe, it}    = require('@popovmp/mocha-tiny')
 const {astToWat} = require('../index.js')
 
 const src = `
-double multiply(double a, double b) {
-	return a * b;
+#export-func addTwo = add
+
+int add(int a, int b) {
+	return a + b;
 }
 `
 
 const expected = '' +
 `(module
-    (func $multiply (param $a f64) (param $b f64) (result f64)
-        (block $_return  (result f64)
-            (br $_return (f64.mul (local.get $a) (local.get $b)))
+    (export "addTwo" (func $add))
+    (func $add (param $a i32) (param $b i32) (result i32)
+        (block $_return (result i32)
+            (br $_return (local.get $a) (local.get $b) (i32.add))
         )
     )
 )`
@@ -27,8 +30,8 @@ const tokens     = tokenize(src)
 const cleaned    = clean(tokens)
 const moduleNode = parse(cleaned)
 
-describe('compile global vars', () => {
-	it('global vars', () => {
+describe('function', () => {
+	it('compiles function to WAT', () => {
 		const actual = astToWat(moduleNode)
 		strictEqual(actual, expected)
 	})

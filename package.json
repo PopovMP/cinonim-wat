@@ -7,8 +7,8 @@
     "test": "mocha-tiny"
   },
   "dependencies": {
-    "@popovmp/tokenizer": "^2.1.0",
-    "@popovmp/cinonim-parser": "^0.1.0"
+    "@popovmp/cinonim-parser": "^1.0.0",
+    "@popovmp/tokenizer": "^2.1.0"
   },
   "devDependencies": {
     "@popovmp/mocha-tiny": "^2.3.0"
