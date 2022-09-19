@@ -13,9 +13,7 @@ const src = `
 
 long fibonacci(int n)
 {
-	long curr;
-	long prev;
-	long temp;
+	long curr, prev, temp;
 
 	curr = 1L;
 	prev = 1L;
