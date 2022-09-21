@@ -118,13 +118,9 @@ function walkAst(node, output, depth)
 			output.push( lpad(`(local $${child.value} ${getDataType(child)})`, depth+1) )
 		}
 
-		output.push('\n')
-		output.push(lpad(`(block $return_${name}${result}`, depth+1))
-
 		for (const child of funcBody.nodes)
-			compileForm(child, output, depth+2)
+			compileForm(child, output, depth+1)
 
-		output.push( lpad(')', depth+1) )
 		output.push( lpad(')', depth) )
 		return
 	}
@@ -145,11 +141,12 @@ function compileForm(node, output, depth)
 	// Function return
 	// return expression?;}
 	if (node.type === NodeType.return) {
-		const name  = node.value
-		const value = node.nodes.length === 0 ? '' : compileExpression(node.nodes[0])
-
 		output.push('\n')
-		output.push( lpad(`(br $return_${name} ${value})`, depth) )
+		if (node.nodes.length === 1) {
+			const value = compileExpression(node.nodes[0])
+			output.push( lpad(value, depth) )
+		}
+		output.push( lpad(`(return)`, depth) )
 		return
 	}
 

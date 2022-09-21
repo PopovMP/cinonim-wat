@@ -32,64 +32,58 @@ const expected = `(module
     (func $forLoop (param $j i32)
         (local $i i32)
 
-        (block $return_forLoop
+        (local.set $i (i32.const 0))
+        (local.set $j (i32.const 0))
+        (block $break_2
+        (loop  $continue_2
+            (br_if $break_2 (i32.eqz (local.get $i) (i32.const 10) (i32.lt_s)))
+            (local.set $j (local.get $j) (i32.const 1) (i32.add))
+            (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (br $continue_2)
+        ))
 
-            (local.set $i (i32.const 0))
-            (local.set $j (i32.const 0))
-            (block $break_3
-            (loop  $continue_3
-                (br_if $break_3 (i32.eqz (local.get $i) (i32.const 10) (i32.lt_s)))
-                (local.set $j (local.get $j) (i32.const 1) (i32.add))
-                (local.set $i (local.get $i) (i32.const 1) (i32.add))
-                (br $continue_3)
-            ))
+        (local.set $i (i32.const 0))
+        (block $break_2
+        (loop  $continue_2
+            (br_if $break_2 (i32.eqz (local.get $i) (i32.const 0) (i32.gt_s)))
+            (br $continue_2)
+        ))
 
-            (local.set $i (i32.const 0))
-            (block $break_3
-            (loop  $continue_3
-                (br_if $break_3 (i32.eqz (local.get $i) (i32.const 0) (i32.gt_s)))
-                (br $continue_3)
-            ))
+        (local.set $i (i32.const 0))
+        (block $break_2
+        (loop  $continue_2
 
-            (local.set $i (i32.const 0))
-            (block $break_3
-            (loop  $continue_3
+            (br $break_2)
+            (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (br $continue_2)
+        ))
 
-                (br $break_3)
-                (local.set $i (local.get $i) (i32.const 1) (i32.add))
-                (br $continue_3)
-            ))
+        (local.set $i (i32.const 0))
+        (local.set $j (i32.const 1))
+        (block $break_2
+        (loop  $continue_2
 
-            (local.set $i (i32.const 0))
-            (local.set $j (i32.const 1))
-            (block $break_3
-            (loop  $continue_3
+            (br $break_2)
+            (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (local.set $j (local.get $j) (i32.const 1) (i32.sub))
+            (br $continue_2)
+        ))
 
-                (br $break_3)
-                (local.set $i (local.get $i) (i32.const 1) (i32.add))
-                (local.set $j (local.get $j) (i32.const 1) (i32.sub))
-                (br $continue_3)
-            ))
+        (block $break_2
+        (loop  $continue_2
 
-            (block $break_3
-            (loop  $continue_3
-
-                (br $break_3)
-                (br $continue_3)
-            ))
-        )
+            (br $break_2)
+            (br $continue_2)
+        ))
     )
 
     (func $doLoop (param $i i32)
 
-        (block $return_doLoop
-
-            (block $break_3
-            (loop  $continue_3
-                (local.set $i (local.get $i) (i32.const 1) (i32.add))
-                (br_if $continue_3 (local.get $i) (i32.const 10) (i32.lt_s))
-            ))
-        )
+        (block $break_2
+        (loop  $continue_2
+            (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (br_if $continue_2 (local.get $i) (i32.const 10) (i32.lt_s))
+        ))
     )
 )`
 

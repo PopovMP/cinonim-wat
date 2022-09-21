@@ -37,23 +37,21 @@ const expected =
         (local $curr i64)
         (local $prev i64)
         (local $temp i64)
+        (local.set $curr (i64.const 1))
+        (local.set $prev (i64.const 1))
 
-        (block $return_fibonacci (result i64)
-            (local.set $curr (i64.const 1))
-            (local.set $prev (i64.const 1))
+        (block $break_2
+        (loop  $continue_2
+            (br_if $break_2 (i32.eqz (local.get $n) (i32.const 2) (i32.gt_s)))
+            (local.set $temp (local.get $curr))
+            (local.set $curr (local.get $prev) (local.get $curr) (i64.add))
+            (local.set $prev (local.get $temp))
+            (local.set $n (local.get $n) (i32.const 1) (i32.sub))
+            (br $continue_2)
+        ))
 
-            (block $break_3
-            (loop  $continue_3
-                (br_if $break_3 (i32.eqz (local.get $n) (i32.const 2) (i32.gt_s)))
-                (local.set $temp (local.get $curr))
-                (local.set $curr (local.get $prev) (local.get $curr) (i64.add))
-                (local.set $prev (local.get $temp))
-                (local.set $n (local.get $n) (i32.const 1) (i32.sub))
-                (br $continue_3)
-            ))
-
-            (br $return_fibonacci (local.get $curr))
-        )
+        (local.get $curr)
+        (return)
     )
 )`
 

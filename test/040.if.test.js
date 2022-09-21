@@ -31,31 +31,28 @@ const src =
 `
 
 const expected =
-	      `(module
+`(module
 
     (func $foo
         (local $a i32)
         (local $b i32)
         (local $c i32)
+        (local.set $a (i32.const 1))
+        (local.set $b (i32.const 2))
 
-        (block $return_foo
-            (local.set $a (i32.const 1))
-            (local.set $b (i32.const 2))
+        (local.get $a) (i32.const 2) (i32.gt_s)
+        (if (then
+            (local.set $a (i32.const 2))
+        ))
 
-            (local.get $a) (i32.const 2) (i32.gt_s)
-            (if (then
-                (local.set $a (i32.const 2))
-            ))
-
-            (local.get $a) (i32.const 3) (i32.eq) (local.get $b) (i32.const 4) (i32.eq) (i32.and)
-            (if (then
-                (local.set $a (local.get $b))
-                (local.set $b (i32.const 5))
-            )(else
-                (local.set $a (local.get $b))
-                (local.set $b (i32.const 5))
-            ))
-        )
+        (local.get $a) (i32.const 3) (i32.eq) (local.get $b) (i32.const 4) (i32.eq) (i32.and)
+        (if (then
+            (local.set $a (local.get $b))
+            (local.set $b (i32.const 5))
+        )(else
+            (local.set $a (local.get $b))
+            (local.set $b (i32.const 5))
+        ))
     )
 )`
 
