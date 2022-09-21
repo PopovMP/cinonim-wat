@@ -35,9 +35,9 @@ function astToWat(moduleNode)
 }
 
 /**
- * @param {Node} node
+ * @param {Node}     node
  * @param {string[]} output
- * @param {number} depth
+ * @param {number}   depth
  */
 function walkAst(node, output, depth)
 {
@@ -71,7 +71,7 @@ function walkAst(node, output, depth)
 	// int foo = 42;
 	if (node.type === NodeType.globalVar) {
 		const name     = node.value
-		const dataType = getDataType(node)
+		const dataType = node.dataType
 		const value    = node.nodes[0].value
 
 		const wat = `(global $${name} (mut ${dataType}) (${dataType}.const ${value}))`
@@ -83,7 +83,7 @@ function walkAst(node, output, depth)
 	// const int foo = 42;
 	if (node.type === NodeType.globalConst) {
 		const name     = node.value
-		const dataType = getDataType(node)
+		const dataType = node.dataType
 		const value    = node.nodes[0].value
 
 		const wat = `(global $${name} ${dataType} (${dataType}.const ${value}))`
@@ -99,12 +99,12 @@ function walkAst(node, output, depth)
 	//   \-- funcBody
 	if (node.type === NodeType.function) {
 		const name       = node.value
-		const dataType   = getDataType(node)
+		const dataType   = node.dataType
 		const funcParams = node.nodes[0]
 		const funcBody   = node.nodes[1]
 
 		const params = funcParams.nodes.length > 0 ? ' ' +
-			funcParams.nodes.map(param => `(param $${param.value} ${getDataType(param)})`).join(' ')
+			funcParams.nodes.map(param => `(param $${param.value} ${param.dataType})`).join(' ')
 			: ''
 		const result = dataType === DataType.void ? '' : ` (result ${dataType})`
 
@@ -115,7 +115,7 @@ function walkAst(node, output, depth)
 		// int foo;
 		for (const child of funcBody.nodes) {
 			if (child.type !== NodeType.localVar) break
-			output.push( lpad(`(local $${child.value} ${getDataType(child)})`, depth+1) )
+			output.push( lpad(`(local $${child.value} ${child.dataType})`, depth+1) )
 		}
 
 		for (const child of funcBody.nodes)
@@ -129,9 +129,9 @@ function walkAst(node, output, depth)
 }
 
 /**
- * @param {Node} node
+ * @param {Node}     node
  * @param {string[]} output
- * @param {number} depth
+ * @param {number}   depth
  */
 function compileForm(node, output, depth)
 {
@@ -167,13 +167,13 @@ function compileForm(node, output, depth)
 	//    +-- statement
 	//    \-- loopBody
 	if (node.type === NodeType.for) {
-		output.push('\n')
 		const [initNode, condNode, incNode, loopBody] = node.nodes
 
+		output.push('\n')
 		for (const assign of initNode.nodes)
 			compileAssignment(assign, output, depth)
 
-		output.push( lpad(`(block $break_${depth}`,    depth) )
+		output.push( lpad(`(block $break_${   depth}`, depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
 		if (condNode.nodes.length > 0) {
@@ -198,10 +198,10 @@ function compileForm(node, output, depth)
 	//    +-- loopBody
 	//    \-- condition
 	if (node.type === NodeType.do) {
-		output.push('\n')
 		const [loopBody, condNode] = node.nodes
 
-		output.push( lpad(`(block $break_${depth}`,    depth) )
+		output.push('\n')
+		output.push( lpad(`(block $break_${   depth}`, depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
 		for (const child of loopBody.nodes)
@@ -220,11 +220,12 @@ function compileForm(node, output, depth)
 	//    +-- condition
 	//    \-- loopBody
 	if (node.type === NodeType.while) {
+		const [condNode, loopBody] = node.nodes
+
 		output.push('\n')
-		output.push( lpad(`(block $break_${depth}`,    depth) )
+		output.push( lpad(`(block $break_${   depth}`, depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
-		const [condNode, loopBody] = node.nodes
 		const predicate = compileExpression(condNode.nodes[0])
 		const condition = `(br_if $break_${depth} (i32.eqz ${predicate}))`
 		output.push( lpad(condition, depth+1) )
@@ -244,9 +245,9 @@ function compileForm(node, output, depth)
 	//    +-- then
 	//    \-- else
 	if (node.type === NodeType.if) {
-		output.push('\n')
 		const [condNode, thenNode, elseNode] = node.nodes
 
+		output.push('\n')
 		const predicate = compileExpression(condNode.nodes[0])
 		output.push( lpad(predicate, depth) )
 		output.push( lpad(`(if (then`, depth) )
@@ -259,6 +260,7 @@ function compileForm(node, output, depth)
 			for (const child of thenNode.nodes)
 				compileForm(child, output, depth+1)
 		}
+
 		output.push( lpad(`))`, depth) )
 		return;
 	}
@@ -287,7 +289,7 @@ function compileExpression(node)
 	}
 
 	if (node.type === NodeType.number) {
-		const dataType = getDataType(node)
+		const dataType = node.dataType
 		const value    = node.value
 
 		return `(${dataType}.const ${value})`
@@ -304,7 +306,7 @@ function compileExpression(node)
 	}
 
 	if (node.type === NodeType.operator) {
-		const dataType    = getDataType(node)
+		const dataType    = node.dataType
 		const instruction = operatorMap[node.value]
 
 		return `(${dataType}.${instruction})`
@@ -328,26 +330,6 @@ function compileAssignment(node, output, depth)
 }
 
 /**
- * Gets data type
- *
- * @param {Node} node
- *
- * @return {string}
- */
-function getDataType(node)
-{
-	switch (node.dataType) {
-		case DataType.f32 : return 'f32'
-		case DataType.f64 : return 'f64'
-		case DataType.i32 : return 'i32'
-		case DataType.i64 : return 'i64'
-		case DataType.void: return DataType.void
-	}
-
-	die('Unknown data type:', node)
-}
-
-/**
  * Throws error
  *
  * @param {string} message
@@ -355,10 +337,10 @@ function getDataType(node)
  */
 function die(message, node)
 {
-	const t1 = node.token
+	const token    = node.token
 	const dataType = node.dataType === DataType.na ? '' : `: ${node.dataType}`
 	const value    = node.value    === '' ? '' : ` ${node.value}`
-	throw new Error(`[${t1.line + 1}, ${t1.column + 1}] ${message} "${node.type}"${dataType}${value}`)
+	throw new Error(`[${token.line + 1}, ${token.column + 1}] ${message} "${node.type}"${dataType}${value}`)
 }
 
 /**
@@ -366,13 +348,12 @@ function die(message, node)
  *
  * @param {string} wat
  * @param {number} depth
- * @param {boolean} nl
  *
  * @return {string}
  */
-function lpad(wat, depth, nl = true)
+function lpad(wat, depth)
 {
-	return '    '.repeat(depth) + wat + (nl ? '\n' : '')
+	return '    '.repeat(depth) + wat + '\n'
 }
 
 module.exports = {
