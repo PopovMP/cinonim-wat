@@ -14,6 +14,8 @@ const operatorMap = {
 	'>=': 'ge_s',
 	'==': 'eq',
 	'!=': 'ne',
+	'&&': 'and',
+	'||': 'or',
 }
 
 /**
@@ -210,7 +212,7 @@ function compileForm(node, output, depth)
 
 		const predicate = compileExpression(condNode.nodes[0])
 		const condition = `(br_if $continue_${depth} ${predicate})`
-		output.push(lpad(condition, depth+1))
+		output.push( lpad(condition, depth+1) )
 
 		output.push( lpad('))', depth) )
 		return
@@ -225,16 +227,43 @@ function compileForm(node, output, depth)
 		output.push( lpad(`(block $break_${depth}`,    depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
-		const predicate = compileExpression(node.nodes[0].nodes[0])
+		const [condNode, loopBody] = node.nodes
+		const predicate = compileExpression(condNode.nodes[0])
 		const condition = `(br_if $break_${depth} (i32.eqz ${predicate}))`
 		output.push( lpad(condition, depth+1) )
 
-		for (const child of node.nodes[1].nodes)
+		for (const child of loopBody.nodes)
 			compileForm(child, output, depth+1)
 
 		output.push( lpad(`(br $continue_${depth})`, depth+1) )
 		output.push( lpad('))', depth) )
 		return
+	}
+
+	// if (condition) { FORM }
+	// if (condition) { FORM } else { FORM }
+	// if
+	//    +-- condition
+	//    +-- then
+	//    \-- else
+	if (node.type === NodeType.if) {
+		output.push('\n')
+		const [condNode, thenNode, elseNode] = node.nodes
+
+		const predicate = compileExpression(condNode.nodes[0])
+		output.push( lpad(predicate, depth) )
+		output.push( lpad(`(if (then`, depth) )
+
+		for (const child of thenNode.nodes)
+			compileForm(child, output, depth+1)
+
+		if (elseNode) {
+			output.push( lpad(`)(else`, depth) )
+			for (const child of thenNode.nodes)
+				compileForm(child, output, depth+1)
+		}
+		output.push( lpad(`))`, depth) )
+		return;
 	}
 
 	// Assignment
