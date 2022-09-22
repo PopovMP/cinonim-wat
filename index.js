@@ -276,7 +276,8 @@ function compileExpression(nodes, index)
 	const node = nodes[index]
 	switch (node.type) {
 		case NodeType.expression:
-			return node.nodes.map((_, i, arr) => compileExpression(arr, i)).join(' ')
+			return node.nodes
+				.map((_, i, arr) => compileExpression(arr, i)).join(' ')
 		case NodeType.number:
 			return `(${node.dataType}.const ${node.value})`
 		case NodeType.localGet:
@@ -287,6 +288,10 @@ function compileExpression(nodes, index)
 			return compileOperator(nodes, index)
 		case NodeType.cast:
 			return compileCast(nodes, index)
+		case NodeType.functionCall:
+			return node.nodes
+				.map((_, i, arr) => compileExpression(arr, i))
+				.join(' ') + ` (call $${node.value})`
 		default:
 			die('Unknown code in expression:', node)
 	}

@@ -9,29 +9,27 @@ const {describe, it}    = require('@popovmp/mocha-tiny')
 const {astToWat} = require('../index.js')
 
 const src = `
-int absAdd(int a, int b) {
-	int sum;
-	sum = a + b;
+#export-func sub = callSub
 
-	if (sum < 0) {
-		return 0 - sum;
-	}
-	
-	return sum;
+int sub(const int a, const int b)
+{
+	return a - b;
+}
+
+int callSub(int a, int b) {
+	return sub(a, b);
 }
 `
 
 const expected = `
 (module
-    (func $absAdd (param $a i32) (param $b i32) (result i32)
-        (local $sum i32)
-        (local.set $sum (local.get $a) (local.get $b) (i32.add))
-        (local.get $sum) (i32.const 0) (i32.lt_s)
-        (if (then
-            (i32.const 0) (local.get $sum) (i32.sub)
-            (return)
-        ))
-        (local.get $sum)
+    (export "sub" (func $callSub))
+    (func $sub (param $a i32) (param $b i32) (result i32)
+        (local.get $a) (local.get $b) (i32.sub)
+        (return)
+    )
+    (func $callSub (param $a i32) (param $b i32) (result i32)
+        (local.get $a) (local.get $b) (call $sub)
         (return)
     )
 )
