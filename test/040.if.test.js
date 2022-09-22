@@ -47,8 +47,7 @@ const expected =`
             (local.set $a (local.get $b))
             (local.set $b (i32.const 5))
         )(else
-            (local.set $a (local.get $b))
-            (local.set $b (i32.const 5))
+            (local.set $a (i32.const 2))
         ))
     )
 )

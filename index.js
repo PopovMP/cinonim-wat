@@ -238,14 +238,20 @@ function compileForm(node, output, depth)
 
 		const predicate = compileExpression(condNode.nodes, 0)
 		add(predicate, output, depth)
-		add(`(if (then`, output, depth)
+
+		const returnNode = searchChildNode(node, NodeType.return)
+		if (returnNode && returnNode.dataType !== DataType.void)
+			add(`(if (result ${returnNode.dataType}) (then`, output, depth)
+		else
+			add(`(if (then`, output, depth)
 
 		for (const child of thenNode.nodes)
 			compileForm(child, output, depth+1)
 
 		if (elseNode) {
 			add(`)(else`, output, depth)
-			for (const child of thenNode.nodes)
+
+			for (const child of elseNode.nodes)
 				compileForm(child, output, depth+1)
 		}
 
@@ -433,6 +439,35 @@ function die(message, node)
 	const dataType = node.dataType === DataType.na ? '' : `: ${node.dataType}`
 	const value    = node.value    === '' ? '' : ` ${node.value}`
 	throw new Error(`[${token.line+1}, ${token.column+1}] ${message} "${node.type}"${dataType}${value}`)
+}
+
+/**
+ * Searches a child node of a given type
+ *
+ * @param {Node}     parenNode
+ * @param {NodeType} nodeType
+ *
+ * @return {Node|null}
+ */
+function searchChildNode(parenNode, nodeType)
+{
+	let result = null;
+
+	loop(parenNode)
+
+	return result
+
+	function loop(parenNode)
+	{
+		for (const node of parenNode.nodes) {
+			if (node.type === nodeType) {
+				result = node
+				return
+			}
+
+			loop(node, nodeType)
+		}
+	}
 }
 
 module.exports = {
