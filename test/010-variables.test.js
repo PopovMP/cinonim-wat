@@ -19,7 +19,7 @@ double fun(int a)
 	foo = (double) baz;
 	foo = ((double) baz) + 2 * ((double) a);
 	foo = ((double) bar) + 1.2;
-	return foo;
+	return (double) baz;
 }
 `
 
@@ -33,7 +33,7 @@ const expected = `
         (global.set $foo (global.get $baz) (f64.promote_f32))
         (global.set $foo (global.get $baz) (f64.promote_f32) (f64.const 2) (local.get $a) (f64.convert_i32_s) (f64.mul) (f64.add))
         (global.set $foo (global.get $bar) (f64.convert_i64_s) (f64.const 1.2) (f64.add))
-        (global.get $foo)
+        (global.get $baz) (f64.promote_f32)
         (return)
     )
 )

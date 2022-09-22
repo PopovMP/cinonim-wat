@@ -339,7 +339,7 @@ function compileCast(nodes, index)
 	switch (toType) {
 		case 'i32': {
 			switch (fromType) {
-				case 'i32': return die('Wrong cast from int to int', node)
+				case 'i32': return ''
 				case 'i64': return '(i32.wrap_i64)'
 				case 'f32': return '(i32.trunc_f32_s)'
 				case 'f64': return '(i32.trunc_f64_s)'
@@ -349,7 +349,7 @@ function compileCast(nodes, index)
 		case 'i64': {
 			switch (fromType) {
 				case 'i32': return '(i64.extend_i32_s)'
-				case 'i64': return die('Wrong cast from long to long', node)
+				case 'i64': return ''
 				case 'f32': return '(i64.trunc_f32_s)'
 				case 'f64': return '(i64.trunc_f64_s)'
 			}
@@ -359,7 +359,7 @@ function compileCast(nodes, index)
 			switch (fromType) {
 				case 'i32': return '(f32.convert_i32_s)'
 				case 'i64': return '(f32.convert_i64_s)'
-				case 'f32': return die('Wrong cast from float to float', node)
+				case 'f32': return ''
 				case 'f64': return '(f32.demote_f64)'
 			}
 			break
@@ -369,13 +369,13 @@ function compileCast(nodes, index)
 				case 'i32': return '(f64.convert_i32_s)'
 				case 'i64': return '(f64.convert_i64_s)'
 				case 'f32': return '(f64.promote_f32)'
-				case 'f64': return die('Wrong cast from double to double', node)
+				case 'f64': return ''
 			}
 			break
 		}
 	}
 
-	return `(${fromType.dataType}.${operatorMap[fromType.value]})`
+	return die('Unknown code in cast:', node)
 }
 
 /**
