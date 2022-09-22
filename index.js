@@ -29,7 +29,7 @@ function astToWat(moduleNode)
 {
 	const output = []
 
-	walkAst(moduleNode, output, 0)
+	compileAst(moduleNode, output, 0)
 
 	return output.join('')
 }
@@ -39,7 +39,7 @@ function astToWat(moduleNode)
  * @param {string[]} output
  * @param {number}   depth
  */
-function walkAst(node, output, depth)
+function compileAst(node, output, depth)
 {
 	// Module
 	if (node.type === NodeType.module) {
@@ -47,9 +47,8 @@ function walkAst(node, output, depth)
 
 		if (node.nodes.length > 0) {
 			output.push('\n')
-
 			for (const child of node.nodes)
-				walkAst(child, output, depth + 1)
+				compileAst(child, output, depth + 1)
 		}
 
 		output.push(')')
@@ -108,7 +107,6 @@ function walkAst(node, output, depth)
 			: ''
 		const result = dataType === DataType.void ? '' : ` (result ${dataType})`
 
-		output.push('\n')
 		output.push(lpad(`(func $${name}${params}${result}`, depth))
 
 		// Local declaration
@@ -141,7 +139,6 @@ function compileForm(node, output, depth)
 	// Function return
 	// return expression?;}
 	if (node.type === NodeType.return) {
-		output.push('\n')
 		if (node.nodes.length === 1) {
 			const value = compileExpression(node.nodes[0])
 			output.push( lpad(value, depth) )
@@ -155,7 +152,6 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.break || node.type === NodeType.condition) {
 		const command = node.type === NodeType.break ? 'break' : 'continue'
 		const index   = node.value === 0 ? '' : ` (i32.const ${node.value})`
-		output.push('\n')
 		output.push( lpad(`(br $${command}_${depth-1}${index})`, depth) )
 		return
 	}
@@ -169,7 +165,6 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.for) {
 		const [initNode, condNode, incNode, loopBody] = node.nodes
 
-		output.push('\n')
 		for (const assign of initNode.nodes)
 			compileAssignment(assign, output, depth)
 
@@ -200,7 +195,6 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.do) {
 		const [loopBody, condNode] = node.nodes
 
-		output.push('\n')
 		output.push( lpad(`(block $break_${   depth}`, depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
@@ -222,7 +216,6 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.while) {
 		const [condNode, loopBody] = node.nodes
 
-		output.push('\n')
 		output.push( lpad(`(block $break_${   depth}`, depth) )
 		output.push( lpad(`(loop  $continue_${depth}`, depth) )
 
@@ -247,7 +240,6 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.if) {
 		const [condNode, thenNode, elseNode] = node.nodes
 
-		output.push('\n')
 		const predicate = compileExpression(condNode.nodes[0])
 		output.push( lpad(predicate, depth) )
 		output.push( lpad(`(if (then`, depth) )
@@ -276,7 +268,7 @@ function compileForm(node, output, depth)
 }
 
 /**
- * Expression
+ * Compiles an expression and returns WAT string
  *
  * @param  {Node} node
  *
@@ -284,41 +276,30 @@ function compileForm(node, output, depth)
  */
 function compileExpression(node)
 {
-	if (node.type === NodeType.expression) {
-		return node.nodes.map(n => compileExpression(n)).join(' ')
+	switch (node.type) {
+		case NodeType.expression:
+			return node.nodes.map(n => compileExpression(n)).join(' ')
+		case NodeType.number:
+			return `(${node.dataType}.const ${node.value})`
+		case NodeType.localGet:
+			return `(local.get $${node.value})`
+		case NodeType.globalGet:
+			return `(global.get $${node.value})`
+		case NodeType.operator:
+			return `(${node.dataType}.${operatorMap[node.value]})`
+		default:
+			die('Unknown code in expression:', node)
 	}
-
-	if (node.type === NodeType.number) {
-		const dataType = node.dataType
-		const value    = node.value
-
-		return `(${dataType}.const ${value})`
-	}
-
-	if (node.type === NodeType.localGet) {
-		const name = node.value
-		return `(local.get $${name})`
-	}
-
-	if (node.type === NodeType.globalGet) {
-		const name = node.value
-		return `(global.get $${name})`
-	}
-
-	if (node.type === NodeType.operator) {
-		const dataType    = node.dataType
-		const instruction = operatorMap[node.value]
-
-		return `(${dataType}.${instruction})`
-	}
-
-	die('Unknown code in expression:', node)
 }
 
 /**
- * @param {Node} node
+ * Compiles a variable assignment
+ *
+ * @param {Node}     node
  * @param {string[]} output
- * @param {number} depth
+ * @param {number}   depth
+ *
+ * @return {void}
  */
 function compileAssignment(node, output, depth)
 {
@@ -327,6 +308,19 @@ function compileAssignment(node, output, depth)
 	const expr  = compileExpression(node.nodes[0])
 
 	output.push( lpad(`(${scope}.set $${name} ${expr})`, depth) )
+}
+
+/**
+ * Gets left pad
+ *
+ * @param {string} wat
+ * @param {number} depth
+ *
+ * @return {string}
+ */
+function lpad(wat, depth)
+{
+	return '    '.repeat(depth) + wat + '\n'
 }
 
 /**
@@ -341,19 +335,6 @@ function die(message, node)
 	const dataType = node.dataType === DataType.na ? '' : `: ${node.dataType}`
 	const value    = node.value    === '' ? '' : ` ${node.value}`
 	throw new Error(`[${token.line + 1}, ${token.column + 1}] ${message} "${node.type}"${dataType}${value}`)
-}
-
-/**
- * Gets left pad
- *
- * @param {string} wat
- * @param {number} depth
- *
- * @return {string}
- */
-function lpad(wat, depth)
-{
-	return '    '.repeat(depth) + wat + '\n'
 }
 
 module.exports = {

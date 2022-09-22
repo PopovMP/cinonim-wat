@@ -9,31 +9,37 @@ const {describe, it}    = require('@popovmp/mocha-tiny')
 const {astToWat} = require('../index.js')
 
 const src = `
-#export-func addTwo = add
+int absAdd(int a, int b) {
+	int sum;
+	sum = a + b;
 
-int add(int a, int b) {
-	return a + b;
+	if (sum < 0) {
+		return 0 - sum;
+	}
+	
+	return sum;
 }
 `
 
-const expected = '' +
-`(module
-    (export "addTwo" (func $add))
-
-    (func $add (param $a i32) (param $b i32) (result i32)
-
-        (local.get $a) (local.get $b) (i32.add)
+const expected = `
+(module
+    (func $absAdd (param $a i32) (param $b i32) (result i32)
+        (local $sum i32)
+        (local.set $sum (local.get $a) (local.get $b) (i32.add))
+        (local.get $sum) (i32.const 0) (i32.lt_s)
+        (if (then
+            (i32.const 0) (local.get $sum) (i32.sub)
+            (return)
+        ))
+        (local.get $sum)
         (return)
     )
-)`
-
-const tokens     = tokenize(src)
-const cleaned    = clean(tokens)
-const moduleNode = parse(cleaned)
+)
+`
 
 describe('function', () => {
 	it('compiles function to WAT', () => {
-		const actual = astToWat(moduleNode)
+		const actual = '\n' + astToWat(parse(clean(tokenize(src)))) + '\n'
 		strictEqual(actual, expected)
 	})
 })

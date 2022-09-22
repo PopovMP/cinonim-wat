@@ -29,17 +29,15 @@ long fibonacci(int n)
 }
 `
 
-const expected =
-`(module
+const expected = `
+(module
     (export "fibonacci" (func $fibonacci))
-
     (func $fibonacci (param $n i32) (result i64)
         (local $curr i64)
         (local $prev i64)
         (local $temp i64)
         (local.set $curr (i64.const 1))
         (local.set $prev (i64.const 1))
-
         (block $break_2
         (loop  $continue_2
             (br_if $break_2 (i32.eqz (local.get $n) (i32.const 2) (i32.gt_s)))
@@ -49,19 +47,15 @@ const expected =
             (local.set $n (local.get $n) (i32.const 1) (i32.sub))
             (br $continue_2)
         ))
-
         (local.get $curr)
         (return)
     )
-)`
+)
+`
 
-const tokens     = tokenize(src)
-const cleaned    = clean(tokens)
-const moduleNode = parse(cleaned)
-
-describe('function', () => {
-	it('compiles function to WAT', () => {
-		const actual = astToWat(moduleNode)
+describe('fibonacci', () => {
+	it('compiles fibonacci to WAT', () => {
+		const actual = '\n' + astToWat(parse(clean(tokenize(src)))) + '\n'
 		strictEqual(actual, expected)
 	})
 })
