@@ -133,8 +133,10 @@ function compileForm(node, output, depth)
 	// Function return
 	// return expression?;}
 	if (node.type === NodeType.return) {
-		if (node.nodes.length === 1)
-			add(compileExpression(node.nodes[0]), output, depth)
+		if (node.nodes.length === 1) {
+			const res = compileExpression(node.nodes, 0)
+			add(res, output, depth)
+		}
 		add(`(return)`, output, depth)
 		return
 	}
@@ -164,7 +166,7 @@ function compileForm(node, output, depth)
 		add(`(loop  $continue_${depth}`, output, depth)
 
 		if (condNode.nodes.length > 0) {
-			const predicate = compileExpression(condNode.nodes[0])
+			const predicate = compileExpression(condNode.nodes, 0)
 			const target    = `$break_${depth}`
 			add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 		}
@@ -193,7 +195,7 @@ function compileForm(node, output, depth)
 		for (const child of loopBody.nodes)
 			compileForm(child, output, depth+1)
 
-		const predicate = compileExpression(condNode.nodes[0])
+		const predicate = compileExpression(condNode.nodes, 0)
 		const target    = `$continue_${depth}`
 		add(`(br_if ${target} ${predicate})`, output, depth+1)
 
@@ -211,7 +213,7 @@ function compileForm(node, output, depth)
 		add(`(block $break_${depth}`   , output, depth)
 		add(`(loop  $continue_${depth}`, output, depth)
 
-		const predicate = compileExpression(condNode.nodes[0])
+		const predicate = compileExpression(condNode.nodes, 0)
 		const target    = `$break_${depth}`
 		add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 
@@ -232,7 +234,7 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.if) {
 		const [condNode, thenNode, elseNode] = node.nodes
 
-		const predicate = compileExpression(condNode.nodes[0])
+		const predicate = compileExpression(condNode.nodes, 0)
 		add(predicate, output, depth)
 		add(`(if (then`, output, depth)
 
@@ -251,7 +253,7 @@ function compileForm(node, output, depth)
 
 	// Assignment
 	// foo = expression;
-	if (node.type === NodeType.localSet || node.type === NodeType.localSet) {
+	if (node.type === NodeType.localSet || node.type === NodeType.globalSet) {
 		compileAssignment(node, output, depth)
 		return
 	}
@@ -262,15 +264,17 @@ function compileForm(node, output, depth)
 /**
  * Compiles an expression and returns WAT string
  *
- * @param  {Node} node
+ * @param  {Node[]} nodes
+ * @param  {number} index
  *
  * @return {string}
  */
-function compileExpression(node)
+function compileExpression(nodes, index)
 {
+	const node = nodes[index]
 	switch (node.type) {
 		case NodeType.expression:
-			return node.nodes.map(n => compileExpression(n)).join(' ')
+			return node.nodes.map((_, i, arr) => compileExpression(arr, i)).join(' ')
 		case NodeType.number:
 			return `(${node.dataType}.const ${node.value})`
 		case NodeType.localGet:
@@ -278,7 +282,9 @@ function compileExpression(node)
 		case NodeType.globalGet:
 			return `(global.get $${node.value})`
 		case NodeType.operator:
-			return `(${node.dataType}.${operatorMap[node.value]})`
+			return compileOperator(nodes, index)
+		case NodeType.cast:
+			return compileCast(nodes, index)
 		default:
 			die('Unknown code in expression:', node)
 	}
@@ -297,9 +303,79 @@ function compileAssignment(node, output, depth)
 {
 	const scope = node.type === NodeType.localSet ? 'local' : 'global'
 	const name  = node.value
-	const expr  = compileExpression(node.nodes[0])
+	const expr  = compileExpression(node.nodes, 0)
 
 	add(`(${scope}.set $${name} ${expr})`, output, depth)
+}
+
+/**
+ * Compiles an operator and returns WAT string
+ *
+ * @param  {Node[]} nodes
+ * @param  {number} index
+ *
+ * @return {string}
+ */
+function compileOperator(nodes, index)
+{
+	const n0 = nodes[index]
+	return `(${n0.dataType}.${operatorMap[n0.value]})`
+}
+
+/**
+ * Compiles a cast and returns WAT string
+ *
+ * @param  {Node[]} nodes
+ * @param  {number} index
+ *
+ * @return {string}
+ */
+function compileCast(nodes, index)
+{
+	const node     = nodes[index]
+	const toType   = node.dataType
+	const fromType = nodes[index-1].dataType
+
+	switch (toType) {
+		case 'i32': {
+			switch (fromType) {
+				case 'i32': return die('Wrong cast from int to int', node)
+				case 'i64': return '(i32.wrap_i64)'
+				case 'f32': return '(i32.trunc_f32_s)'
+				case 'f64': return '(i32.trunc_f64_s)'
+			}
+			break
+		}
+		case 'i64': {
+			switch (fromType) {
+				case 'i32': return '(i64.extend_i32_s)'
+				case 'i64': return die('Wrong cast from long to long', node)
+				case 'f32': return '(i64.trunc_f32_s)'
+				case 'f64': return '(i64.trunc_f64_s)'
+			}
+			break
+		}
+		case 'f32': {
+			switch (fromType) {
+				case 'i32': return '(f32.convert_i32_s)'
+				case 'i64': return '(f32.convert_i64_s)'
+				case 'f32': return die('Wrong cast from float to float', node)
+				case 'f64': return '(f32.demote_f64)'
+			}
+			break
+		}
+		case 'f64': {
+			switch (fromType) {
+				case 'i32': return '(f64.convert_i32_s)'
+				case 'i64': return '(f64.convert_i64_s)'
+				case 'f32': return '(f64.promote_f32)'
+				case 'f64': return die('Wrong cast from double to double', node)
+			}
+			break
+		}
+	}
+
+	return `(${fromType.dataType}.${operatorMap[fromType.value]})`
 }
 
 /**
