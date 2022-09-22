@@ -61,8 +61,7 @@ function compileAst(node, output, depth)
 		const name  = node.value
 		const value = node.data[0]
 
-		const wat = `(export "${value}" (func $${name}))`
-		output.push( lpad(wat, depth) )
+		add(`(export "${value}" (func $${name}))`, output, depth)
 		return
 	}
 
@@ -73,8 +72,7 @@ function compileAst(node, output, depth)
 		const dataType = node.dataType
 		const value    = node.nodes[0].value
 
-		const wat = `(global $${name} (mut ${dataType}) (${dataType}.const ${value}))`
-		output.push( lpad(wat, depth) )
+		add(`(global $${name} (mut ${dataType}) (${dataType}.const ${value}))`, output, depth)
 		return
 	}
 
@@ -85,9 +83,7 @@ function compileAst(node, output, depth)
 		const dataType = node.dataType
 		const value    = node.nodes[0].value
 
-		const wat = `(global $${name} ${dataType} (${dataType}.const ${value}))`
-
-		output.push( lpad(wat, depth) )
+		add(`(global $${name} ${dataType} (${dataType}.const ${value}))`, output, depth)
 		return
 	}
 
@@ -102,24 +98,22 @@ function compileAst(node, output, depth)
 		const funcParams = node.nodes[0]
 		const funcBody   = node.nodes[1]
 
-		const params = funcParams.nodes.length > 0 ? ' ' +
-			funcParams.nodes.map(param => `(param $${param.value} ${param.dataType})`).join(' ')
-			: ''
+		const params = funcParams.nodes.map(param => ` (param $${param.value} ${param.dataType})`).join('')
 		const result = dataType === DataType.void ? '' : ` (result ${dataType})`
 
-		output.push(lpad(`(func $${name}${params}${result}`, depth))
+		add(`(func $${name}${params}${result}`, output, depth)
 
 		// Local declaration
 		// int foo;
 		for (const child of funcBody.nodes) {
 			if (child.type !== NodeType.localVar) break
-			output.push( lpad(`(local $${child.value} ${child.dataType})`, depth+1) )
+			add(`(local $${child.value} ${child.dataType})`, output, depth+1)
 		}
 
 		for (const child of funcBody.nodes)
 			compileForm(child, output, depth+1)
 
-		output.push( lpad(')', depth) )
+		add(')', output, depth)
 		return
 	}
 
@@ -139,11 +133,9 @@ function compileForm(node, output, depth)
 	// Function return
 	// return expression?;}
 	if (node.type === NodeType.return) {
-		if (node.nodes.length === 1) {
-			const value = compileExpression(node.nodes[0])
-			output.push( lpad(value, depth) )
-		}
-		output.push( lpad(`(return)`, depth) )
+		if (node.nodes.length === 1)
+			add(compileExpression(node.nodes[0]), output, depth)
+		add(`(return)`, output, depth)
 		return
 	}
 
@@ -152,7 +144,7 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.break || node.type === NodeType.condition) {
 		const command = node.type === NodeType.break ? 'break' : 'continue'
 		const index   = node.value === 0 ? '' : ` (i32.const ${node.value})`
-		output.push( lpad(`(br $${command}_${depth-1}${index})`, depth) )
+		add(`(br $${command}_${depth-1}${index})`, output, depth)
 		return
 	}
 
@@ -168,13 +160,13 @@ function compileForm(node, output, depth)
 		for (const assign of initNode.nodes)
 			compileAssignment(assign, output, depth)
 
-		output.push( lpad(`(block $break_${   depth}`, depth) )
-		output.push( lpad(`(loop  $continue_${depth}`, depth) )
+		add(`(block $break_${depth}`   , output, depth)
+		add(`(loop  $continue_${depth}`, output, depth)
 
 		if (condNode.nodes.length > 0) {
 			const predicate = compileExpression(condNode.nodes[0])
-			const condition = `(br_if $break_${depth} (i32.eqz ${predicate}))`
-			output.push(lpad(condition, depth+1))
+			const target    = `$break_${depth}`
+			add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 		}
 
 		for (const child of loopBody.nodes)
@@ -183,8 +175,8 @@ function compileForm(node, output, depth)
 		for (const assign of incNode.nodes)
 			compileAssignment(assign, output, depth+1)
 
-		output.push( lpad(`(br $continue_${depth})`, depth+1) )
-		output.push( lpad('))', depth) )
+		add(`(br $continue_${depth})`, output, depth+1)
+		add('))', output, depth)
 		return
 	}
 
@@ -195,17 +187,17 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.do) {
 		const [loopBody, condNode] = node.nodes
 
-		output.push( lpad(`(block $break_${   depth}`, depth) )
-		output.push( lpad(`(loop  $continue_${depth}`, depth) )
+		add(`(block $break_${depth}`   , output, depth)
+		add(`(loop  $continue_${depth}`, output, depth)
 
 		for (const child of loopBody.nodes)
 			compileForm(child, output, depth+1)
 
 		const predicate = compileExpression(condNode.nodes[0])
-		const condition = `(br_if $continue_${depth} ${predicate})`
-		output.push( lpad(condition, depth+1) )
+		const target    = `$continue_${depth}`
+		add(`(br_if ${target} ${predicate})`, output, depth+1)
 
-		output.push( lpad('))', depth) )
+		add('))', output, depth)
 		return
 	}
 
@@ -216,18 +208,18 @@ function compileForm(node, output, depth)
 	if (node.type === NodeType.while) {
 		const [condNode, loopBody] = node.nodes
 
-		output.push( lpad(`(block $break_${   depth}`, depth) )
-		output.push( lpad(`(loop  $continue_${depth}`, depth) )
+		add(`(block $break_${depth}`   , output, depth)
+		add(`(loop  $continue_${depth}`, output, depth)
 
 		const predicate = compileExpression(condNode.nodes[0])
-		const condition = `(br_if $break_${depth} (i32.eqz ${predicate}))`
-		output.push( lpad(condition, depth+1) )
+		const target    = `$break_${depth}`
+		add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 
 		for (const child of loopBody.nodes)
 			compileForm(child, output, depth+1)
 
-		output.push( lpad(`(br $continue_${depth})`, depth+1) )
-		output.push( lpad('))', depth) )
+		add(`(br $continue_${depth})`, output, depth+1)
+		add('))', output, depth)
 		return
 	}
 
@@ -241,19 +233,19 @@ function compileForm(node, output, depth)
 		const [condNode, thenNode, elseNode] = node.nodes
 
 		const predicate = compileExpression(condNode.nodes[0])
-		output.push( lpad(predicate, depth) )
-		output.push( lpad(`(if (then`, depth) )
+		add(predicate, output, depth)
+		add(`(if (then`, output, depth)
 
 		for (const child of thenNode.nodes)
 			compileForm(child, output, depth+1)
 
 		if (elseNode) {
-			output.push( lpad(`)(else`, depth) )
+			add(`)(else`, output, depth)
 			for (const child of thenNode.nodes)
 				compileForm(child, output, depth+1)
 		}
 
-		output.push( lpad(`))`, depth) )
+		add(`))`, output, depth)
 		return;
 	}
 
@@ -307,20 +299,19 @@ function compileAssignment(node, output, depth)
 	const name  = node.value
 	const expr  = compileExpression(node.nodes[0])
 
-	output.push( lpad(`(${scope}.set $${name} ${expr})`, depth) )
+	add(`(${scope}.set $${name} ${expr})`, output, depth)
 }
 
 /**
- * Gets left pad
+ * Writes "wat" code to "output" at "depth"
  *
- * @param {string} wat
- * @param {number} depth
- *
- * @return {string}
+ * @param {string}   wat
+ * @param {string[]} output
+ * @param {number}   depth
  */
-function lpad(wat, depth)
+function add(wat, output, depth)
 {
-	return '    '.repeat(depth) + wat + '\n'
+	output.push('    '.repeat(depth) + wat + '\n')
 }
 
 /**
@@ -334,7 +325,7 @@ function die(message, node)
 	const token    = node.token
 	const dataType = node.dataType === DataType.na ? '' : `: ${node.dataType}`
 	const value    = node.value    === '' ? '' : ` ${node.value}`
-	throw new Error(`[${token.line + 1}, ${token.column + 1}] ${message} "${node.type}"${dataType}${value}`)
+	throw new Error(`[${token.line+1}, ${token.column+1}] ${message} "${node.type}"${dataType}${value}`)
 }
 
 module.exports = {
