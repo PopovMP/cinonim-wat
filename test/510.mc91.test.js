@@ -18,7 +18,7 @@ int mc91rec(int n, int c)
             return mc91rec(n - 10, c - 1);
         }
 
-        return mc91rec(n + 11, c + 1);
+		return mc91rec(n + 11, c + 1);
     }
 
     return n;
@@ -35,9 +35,9 @@ const expected = `
     (export "mc91" (func $mc91))
     (func $mc91rec (param $n i32) (param $c i32) (result i32)
         (local.get $c) (i32.const 0) (i32.ne)
-        (if (result i32) (then
+        (if (then
             (local.get $n) (i32.const 100) (i32.gt_s)
-            (if (result i32) (then
+            (if (then
                 (local.get $n) (i32.const 10) (i32.sub) (local.get $c) (i32.const 1) (i32.sub) (call $mc91rec)
                 (return)
             ))
@@ -54,8 +54,8 @@ const expected = `
 )
 `
 
-describe('McCarthy  91', () => {
-	it('compiles fibonacci to WAT', () => {
+describe('McCarthy 91', () => {
+	it('compiles McCarthy 91 to WAT', () => {
 		const actual = '\n' + astToWat(parse(clean(tokenize(src)))) + '\n'
 		strictEqual(actual, expected)
 	})

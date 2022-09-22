@@ -19,11 +19,17 @@ void forLoop(int j)
 	for (;;) { break; }
 }
 
-void doLoop(int i)
+int doLoop(int i)
 {
 	do {
 		i = i + 1;
+
+		if (i == 5) {
+			return i;
+		}	
 	} while (i < 10);
+	
+	return i;
 }
 `
 
@@ -68,12 +74,19 @@ const expected = `
             (br $continue_2)
         ))
     )
-    (func $doLoop (param $i i32)
+    (func $doLoop (param $i i32) (result i32)
         (block $break_2
         (loop  $continue_2
             (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (local.get $i) (i32.const 5) (i32.eq)
+            (if (then
+                (local.get $i)
+                (return)
+            ))
             (br_if $continue_2 (local.get $i) (i32.const 10) (i32.lt_s))
         ))
+        (local.get $i)
+        (return)
     )
 )
 `
