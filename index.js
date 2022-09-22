@@ -8,14 +8,16 @@ const operatorMap = {
 	'*' : 'mul',
 	'/' : 'div',
 	'%' : 'rem',
-	'<' : 'lt_s',
-	'<=': 'le_s',
-	'>' : 'gt_s',
-	'>=': 'ge_s',
+	'<' : 'lt',
+	'<=': 'le',
+	'>' : 'gt',
+	'>=': 'ge',
 	'==': 'eq',
 	'!=': 'ne',
 	'&&': 'and',
 	'||': 'or',
+	'<<': 'shl',
+	'>>': 'shr',
 }
 
 /**
@@ -318,8 +320,32 @@ function compileAssignment(node, output, depth)
  */
 function compileOperator(nodes, index)
 {
-	const n0 = nodes[index]
-	return `(${n0.dataType}.${operatorMap[n0.value]})`
+	const operator = nodes[index]
+
+	switch (operator.value) {
+		case '+':
+		case '-':
+		case '*':
+		case '==':
+		case '!=':
+		case '<<':
+		case '&&':
+		case '||':
+			return `(${operator.dataType}.${operatorMap[operator.value]})`
+		case '<':
+		case '>':
+		case '<=':
+		case '>=':
+		case '/':
+		case '%':
+		case '>>':
+			if (operator.dataType === DataType.i32 || operator.dataType === DataType.i64)
+				return `(${operator.dataType}.${operatorMap[operator.value]}_s)`
+			else
+				return `(${operator.dataType}.${operatorMap[operator.value]})`
+	}
+
+	return die('Unknown operator:', operator)
 }
 
 /**
