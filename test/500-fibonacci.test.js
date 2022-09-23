@@ -48,7 +48,6 @@ const expected = `
             (br $continue_2)
         ))
         (local.get $curr)
-        (return)
     )
 )
 `

@@ -86,7 +86,6 @@ const expected = `
             (br_if $continue_2 (local.get $i) (i32.const 10) (i32.lt_s))
         ))
         (local.get $i)
-        (return)
     )
 )
 `

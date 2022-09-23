@@ -49,13 +49,11 @@ const expected = `
             (return)
         ))
         (local.get $n)
-        (return)
     )
     (func $mc91 (param $n i32) (result i32)
         (local.get $n)
         (i32.const 1)
         (call $mc91rec)
-        (return)
     )
 )
 `

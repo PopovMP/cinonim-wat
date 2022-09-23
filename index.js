@@ -139,7 +139,9 @@ function compileForm(node, output, depth)
 			const res = compileExpression(node.nodes, 0,depth)
 			add(res, output, depth)
 		}
-		add(`(return)`, output, depth)
+		// Skip "return" if not located directly in the func body
+		if (node.parent.type !== NodeType.funcBody)
+			add(`(return)`, output, depth)
 		return
 	}
 
