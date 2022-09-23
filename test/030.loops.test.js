@@ -12,23 +12,37 @@ const src = `
 void forLoop(int j)
 {
 	int i;
-	for (i = 0, j = 0; i < 10; i = i + 1) { j = j + 1; }
+	for (i = 0, j = 0; i < 10; i += 1) { j = j + 1; }
 	for (i = 0; i > 0; ) { }
 	for (i = 0;; i = i + 1) { break; }
-	for (i = 0, j = 1; ;i = i + 1, j = j - 1) { break; }
+	for (i = 0, j = 1; ; i += 1, j -= 1) { break; }
 	for (;;) { break; }
 }
 
 int doLoop(int i)
 {
 	do {
-		i = i + 1;
+		i += 1;
 
 		if (i == 5) {
 			return i;
 		}	
 	} while (i < 10);
 	
+	return i;
+}
+
+int whileLoop(int i)
+{
+	while (i < 10) {
+		if (i == 5) {
+			return i;
+		}
+		else {
+			break;
+		}
+	}
+
 	return i;
 }
 `
@@ -84,6 +98,20 @@ const expected = `
                 (return)
             ))
             (br_if $continue_2 (local.get $i) (i32.const 10) (i32.lt_s))
+        ))
+        (local.get $i)
+    )
+    (func $whileLoop (param $i i32) (result i32)
+        (block $break_2
+        (loop  $continue_2
+            (br_if $break_2 (i32.eqz (local.get $i) (i32.const 10) (i32.lt_s)))
+            (local.get $i) (i32.const 5) (i32.eq)
+            (if (then
+                (local.get $i)
+                (return)
+            ))
+            (br $break_2)
+            (br $continue_2)
         ))
         (local.get $i)
     )

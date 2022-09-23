@@ -19,10 +19,10 @@ long fibonacci(int n)
 	prev = 1;
 
 	while(n > 2) {
-		temp = curr;
-		curr = prev + curr;
-		prev = temp;
-		n    = n - 1;
+		temp  = curr;
+		curr += prev;
+		prev  = temp;
+		n    -= 1;
 	}
 
 	return curr;
@@ -42,7 +42,7 @@ const expected = `
         (loop  $continue_2
             (br_if $break_2 (i32.eqz (local.get $n) (i32.const 2) (i32.gt_s)))
             (local.set $temp (local.get $curr))
-            (local.set $curr (local.get $prev) (local.get $curr) (i64.add))
+            (local.set $curr (local.get $curr) (local.get $prev) (i64.add))
             (local.set $prev (local.get $temp))
             (local.set $n (local.get $n) (i32.const 1) (i32.sub))
             (br $continue_2)
