@@ -235,6 +235,7 @@ function compileForm(node, output, depth)
 	//    \-- else
 	if (node.type === NodeType.if) {
 		const [condNode, thenNode, elseNode] = node.nodes
+		const isReturnInThen = searchChildNode(thenNode, NodeType.return)
 
 		const predicate = compileExpression(condNode.nodes, 0)
 		add(predicate, output, depth)
@@ -243,14 +244,20 @@ function compileForm(node, output, depth)
 		for (const child of thenNode.nodes)
 			compileForm(child, output, depth+1)
 
-		if (elseNode) {
+		// Skip "else" if there is a "return" in "then"
+		if (elseNode && !isReturnInThen) {
 			add(`)(else`, output, depth)
-
 			for (const child of elseNode.nodes)
 				compileForm(child, output, depth+1)
 		}
 
 		add(`))`, output, depth)
+
+		// Plot the "else"'s code after "if" in case of "return" in "then"
+		if (elseNode && isReturnInThen) {
+			for (const child of elseNode.nodes)
+				compileForm(child, output, depth)
+		}
 		return;
 	}
 
@@ -408,6 +415,35 @@ function compileCast(nodes, index)
 	}
 
 	return die('Unknown code in cast:', node)
+}
+/**
+ * Searches a child node of a given type
+ *
+ * @param {Node}     parenNode
+ * @param {NodeType} nodeType
+ *
+ * @return {Node|null}
+ */
+function searchChildNode(parenNode, nodeType)
+{
+	let result = null;
+
+	loop(parenNode)
+
+	return result
+
+	function loop(parenNode)
+	{
+		for (const node of parenNode.nodes) {
+			if (node.type === nodeType) {
+				result = node
+				return
+			}
+
+			if (result === null)
+				loop(node, nodeType)
+		}
+	}
 }
 
 /**
