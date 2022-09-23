@@ -136,7 +136,7 @@ function compileForm(node, output, depth)
 	// return expression?;}
 	if (node.type === NodeType.return) {
 		if (node.nodes.length === 1) {
-			const res = compileExpression(node.nodes, 0)
+			const res = compileExpression(node.nodes, 0,depth)
 			add(res, output, depth)
 		}
 		add(`(return)`, output, depth)
@@ -168,7 +168,7 @@ function compileForm(node, output, depth)
 		add(`(loop  $continue_${depth}`, output, depth)
 
 		if (condNode.nodes.length > 0) {
-			const predicate = compileExpression(condNode.nodes, 0)
+			const predicate = compileExpression(condNode.nodes, 0, depth)
 			const target    = `$break_${depth}`
 			add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 		}
@@ -197,7 +197,7 @@ function compileForm(node, output, depth)
 		for (const child of loopBody.nodes)
 			compileForm(child, output, depth+1)
 
-		const predicate = compileExpression(condNode.nodes, 0)
+		const predicate = compileExpression(condNode.nodes, 0, depth)
 		const target    = `$continue_${depth}`
 		add(`(br_if ${target} ${predicate})`, output, depth+1)
 
@@ -215,7 +215,7 @@ function compileForm(node, output, depth)
 		add(`(block $break_${depth}`   , output, depth)
 		add(`(loop  $continue_${depth}`, output, depth)
 
-		const predicate = compileExpression(condNode.nodes, 0)
+		const predicate = compileExpression(condNode.nodes, 0, depth)
 		const target    = `$break_${depth}`
 		add(`(br_if ${target} (i32.eqz ${predicate}))`, output, depth+1)
 
@@ -237,7 +237,7 @@ function compileForm(node, output, depth)
 		const [condNode, thenNode, elseNode] = node.nodes
 		const isReturnInThen = searchChildNode(thenNode, NodeType.return)
 
-		const predicate = compileExpression(condNode.nodes, 0)
+		const predicate = compileExpression(condNode.nodes, 0, depth)
 		add(predicate, output, depth)
 		add(`(if (then`, output, depth)
 
@@ -276,16 +276,16 @@ function compileForm(node, output, depth)
  *
  * @param  {Node[]} nodes
  * @param  {number} index
+ * @param  {number} depth
  *
  * @return {string}
  */
-function compileExpression(nodes, index)
+function compileExpression(nodes, index, depth)
 {
 	const node = nodes[index]
 	switch (node.type) {
 		case NodeType.expression:
-			return node.nodes
-				.map((_, i, arr) => compileExpression(arr, i)).join(' ')
+			return node.nodes.map((_, i, arr) => compileExpression(arr, i, depth)).join(' ')
 		case NodeType.number:
 			return `(${node.dataType}.const ${node.value})`
 		case NodeType.localGet:
@@ -297,9 +297,7 @@ function compileExpression(nodes, index)
 		case NodeType.cast:
 			return compileCast(nodes, index)
 		case NodeType.functionCall:
-			return node.nodes
-				.map((_, i, arr) => compileExpression(arr, i))
-				.join(' ') + ` (call $${node.value})`
+			return compileFunctionCall(node, index, depth)
 		default:
 			die('Unknown code in expression:', node)
 	}
@@ -318,7 +316,7 @@ function compileAssignment(node, output, depth)
 {
 	const scope = node.type === NodeType.localSet ? 'local' : 'global'
 	const name  = node.value
-	const expr  = compileExpression(node.nodes, 0)
+	const expr  = compileExpression(node.nodes, 0, depth)
 
 	add(`(${scope}.set $${name} ${expr})`, output, depth)
 }
@@ -416,6 +414,28 @@ function compileCast(nodes, index)
 
 	return die('Unknown code in cast:', node)
 }
+
+/**
+ * Compiles a function call.
+ * Plots each argument and the function call
+ * on a new line in a stack-based style.
+ *
+ * @param {Node  } funcCall
+ * @param {number} index
+ * @param {number} depth
+ *
+ * @return {string}
+ */
+function compileFunctionCall(funcCall, index, depth)
+{
+	return funcCall.nodes
+		.map((_, i, arr) => i === 0
+			? compileExpression(arr, i, depth)                  // Don't left-pad the first argument
+			: leftPad(compileExpression(arr, i, depth), depth)) // Left-pad rest of arguments
+		.join('\n') + '\n' +                                    // Plot each argument on a new line
+		leftPad(`(call $${funcCall.value})`, depth)             // Left-pad the function call
+}
+
 /**
  * Searches a child node of a given type
  *
@@ -455,7 +475,20 @@ function searchChildNode(parenNode, nodeType)
  */
 function add(wat, output, depth)
 {
-	output.push('    '.repeat(depth) + wat + '\n')
+	output.push(leftPad(wat, depth) + '\n')
+}
+
+/**
+ * Adds left padding
+ *
+ * @param {string} wat
+ * @param {number} depth
+ *
+ * @return {string}
+ */
+function leftPad(wat, depth)
+{
+	return '    '.repeat(depth) + wat
 }
 
 /**
