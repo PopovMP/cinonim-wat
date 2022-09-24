@@ -13,20 +13,19 @@ const src = `
 
 int mc91rec(int n, int c)
 {
-    if (c != 0) {
-        if (n > 100) {
-            return mc91rec(n - 10, c - 1);
-        }
+	if (c != 0) {
+		if (n > 100)
+			return mc91rec(n - 10, c - 1);
 
 		return mc91rec(n + 11, c + 1);
-    }
+	}
 
-    return n;
+	return n;
 }
 
 int mc91(int n)
 {
-    return mc91rec(n, 1);
+	return mc91rec(n, 1);
 }
 `
 
