@@ -263,6 +263,14 @@ function compileForm(node, output, depth)
 		return;
 	}
 
+	// function call
+	// foo(1, 2);
+	if (node.type === NodeType.functionCall) {
+		const funcCall = compileFunctionCall(node, depth)
+		add(funcCall, output, depth)
+		return
+	}
+
 	// Assignment
 	// foo = expression;
 	if (node.type === NodeType.localSet || node.type === NodeType.globalSet) {
@@ -299,7 +307,7 @@ function compileExpression(nodes, index, depth)
 		case NodeType.cast:
 			return compileCast(nodes, index)
 		case NodeType.functionCall:
-			return compileFunctionCall(node, index, depth)
+			return compileFunctionCall(node, depth)
 		default:
 			die('Unknown code in expression:', node)
 	}
@@ -423,12 +431,11 @@ function compileCast(nodes, index)
  * on a new line in a stack-based style.
  *
  * @param {Node  } funcCall
- * @param {number} index
  * @param {number} depth
  *
  * @return {string}
  */
-function compileFunctionCall(funcCall, index, depth)
+function compileFunctionCall(funcCall, depth)
 {
 	return funcCall.nodes
 		.map((_, i, arr) => i === 0
